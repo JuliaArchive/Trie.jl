@@ -1,82 +1,84 @@
 module Tries
-using Base
 
-import Base.assign,
+import Base.push!,
        Base.get,
-       Base.has,
+       Base.haskey,
        Base.keys
 
 export Trie,
-       assign,
+       push!,
        get,
-       has,
+       haskey,
        keys,
        keys_with_prefix,
        subtrie
 
-type Trie{T}
-    value::T
-    children::Dict{Char,Trie{T}}
+type Trie
+    value::Int
+    children::Dict{String,Trie}
     is_key::Bool
-
-    function Trie()
-        self = new()
-        self.children = (Char=>Trie{T})[]
-        self.is_key = false
-        self
-    end
 end
 
-Trie() = Trie{Any}()
+Trie() = Trie(0,(String=>Trie)[],false)
 
-function assign{T}(t::Trie{T}, val::T, key::String)
+function Trie(words)
+    t = Trie()
+    for word in words
+        push!(t, word)
+    end
+    return t
+end
+
+function push!(t::Trie, key::String)
     node = t
+    val = 1
     for char in key
-        if !has(node.children, char)
-            node.children[char] = Trie{T}()
+        if !haskey(node.children, string(char))
+            node.children[string(char)] = Trie()
         end
-        node = node.children[char]
+        node = node.children[string(char)]
+        val += 1
     end
     node.is_key = true
     node.value = val
+    return t
 end
 
 function subtrie(t::Trie, prefix::String)
     node = t
     for char in prefix
-        if !has(node.children, char)
-            return nothing
+        if !haskey(node.children, string(char))
+            return nothing #should we error?
         else
-            node = node.children[char]
+            node = node.children[string(char)]
         end
     end
-    node
+    return node
 end
+getindex(t::Trie,x) = subtrie(t,x)
 
-function has(t::Trie, key::String)
+function haskey(t::Trie, key::String)
     node = subtrie(t, key)
-    node != nothing && node.is_key
+    return node != nothing && node.is_key
 end
 
-get(t::Trie, key::String) = get(t, key, nothing)
-function get(t::Trie, key::String, notfound)
+function get(t::Trie, key::String, default)
     node = subtrie(t, key)
     if node != nothing && node.is_key
         return node.value
     end
-    notfound
+    return default
 end
 
-function keys(t::Trie, prefix::String, found)
+function keys(t::Trie, prefix::String="", found=String[])
     if t.is_key
-        push(found, prefix)
+        push!(found, prefix)
     end
     for (char,child) in t.children
-        keys(child, strcat(prefix,char), found)
+        keys(child, string(prefix,char), found)
     end
+    return found
 end
-keys(t::Trie, prefix::String) = (found=String[]; keys(t, prefix, found); found)
-keys(t::Trie) = keys(t, "")
 
 function keys_with_prefix(t::Trie, prefix::String)
     st = subtrie(t, prefix)
@@ -84,3 +86,10 @@ function keys_with_prefix(t::Trie, prefix::String)
 end
 
 end # module
+
+# match Base semantics add/get/etc.
+# compress/uncompress trie keys
+# keys_with_prefix?
+# better show for Trie
+# tests
+# docs
